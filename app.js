@@ -1,62 +1,201 @@
+const API_URL = "https://jarvis-ai.ddbtom.workers.dev/api/chat";
+
 const input = document.getElementById("input");
 const send = document.getElementById("send");
 const mic = document.getElementById("mic");
 const conversation = document.getElementById("conversation");
 const orb = document.getElementById("orb");
 
-function addMessage(text, who="jarvis"){
-  const article=document.createElement("article");
-  article.className=`message ${who}`;
-  article.innerHTML=who==="jarvis"
+const history = [];
+
+function addMessage(text, who = "jarvis", speakIt = true) {
+  const article = document.createElement("article");
+  article.className = `message ${who}`;
+
+  article.innerHTML = who === "jarvis"
     ? `<div class="avatar">J</div><div><div class="label">JARVIS</div><div class="bubble"></div></div>`
     : `<div><div class="bubble"></div></div>`;
-  article.querySelector(".bubble").textContent=text;
+
+  article.querySelector(".bubble").textContent = text;
   conversation.appendChild(article);
-  conversation.scrollTop=conversation.scrollHeight;
-  if(who==="jarvis") speak(text);
+  conversation.scrollTop = conversation.scrollHeight;
+
+  if (who === "jarvis" && speakIt) speak(text);
 }
 
-function speak(text){
-  if(!("speechSynthesis" in window)) return;
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang="it-IT"; u.rate=.96; u.pitch=.92;
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "it-IT";
+  u.rate = 0.96;
+  u.pitch = 0.92;
+
   speechSynthesis.speak(u);
 }
 
-function localReply(text){
-  const t=text.toLowerCase();
-  if(t.includes("cosa puoi fare")) return "Posso diventare il tuo assistente personale: conversazione, voce, memoria, web, promemoria e automazioni. Il prossimo modulo collegherà il mio cervello AI e i Comandi Rapidi di iPhone.";
-  if(t.includes("memoria") || t.includes("ricordi")) return "Il modulo memoria è in preparazione. Quando sarà collegato, potrò conservare solo le informazioni che deciderai di affidarmi.";
-  if(t.includes("aiut")) return "Certamente. Dimmi cosa vuoi ottenere e penserò io ai passaggi necessari.";
-  return "Ricevuto. Il mio motore AI non è ancora collegato a questa interfaccia: questa versione è pronta per il collegamento del backend.";
+function setBusy(busy) {
+  send.disabled = busy;
+  mic.disabled = busy;
+  input.disabled = busy;
+
+  if (busy) {
+    orb.classList.add("thinking");
+  } else {
+    orb.classList.remove("thinking");
+  }
 }
 
-function submit(){
-  const text=input.value.trim();
-  if(!text) return;
-  addMessage(text,"user");
-  input.value="";
-  input.style.height="auto";
-  setTimeout(()=>addMessage(localReply(text)),420);
+async function askJarvis(text) {
+  history.push({
+    role: "user",
+    content: text
+  });
+
+  const messages = history.slice(-12);
+
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      messages: messages
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.answer || typeof data.answer !== "string") {
+    throw new Error("Invalid AI response");
+  }
+
+  history.push({
+    role: "assistant",
+    content: data.answer
+  });
+
+  return data.answer;
 }
 
-send.addEventListener("click",submit);
-input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();submit()}});
-input.addEventListener("input",()=>{input.style.height="auto";input.style.height=Math.min(input.scrollHeight,100)+"px"});
+async function submit() {
+  const text = input.value.trim();
 
-document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.prompt;submit()}));
+  if (!text || send.disabled) return;
 
-let recognition=null;
-if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  recognition=new SR();
-  recognition.lang="it-IT"; recognition.interimResults=false; recognition.continuous=false;
-  recognition.onstart=()=>{mic.style.boxShadow="0 0 25px rgba(111,231,255,.7)";orb.classList.add("listening")};
-  recognition.onend=()=>{mic.style.boxShadow="";orb.classList.remove("listening")};
-  recognition.onresult=e=>{input.value=e.results[0][0].transcript;submit()};
+  addMessage(text, "user", false);
+
+  input.value = "";
+  input.style.height = "auto";
+
+  setBusy(true);
+
+  addMessage("Un momento…", "jarvis", false);
+
+  const thinkingBubble =
+    conversation.lastElementChild.querySelector(".bubble");
+
+  try {
+    const answer = await askJarvis(text);
+
+    thinkingBubble.textContent = answer;
+    speak(answer);
+
+  } catch (error) {
+    console.error("JARVIS connection error:", error);
+
+    const fallback =
+      "Mi dispiace, al momento non riesco a raggiungere il mio motore AI. Riprova tra poco.";
+
+    thinkingBubble.textContent = fallback;
+    speak(fallback);
+
+    history.pop();
+
+  } finally {
+    setBusy(false);
+    input.focus();
+  }
 }
-mic.addEventListener("click",()=>{
-  if(!recognition){addMessage("La dettatura vocale non è disponibile in questo browser. Prova ad aprire JARVIS in Safari.");return}
-  try{recognition.start()}catch(_){}
+
+send.addEventListener("click", submit);
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    submit();
+  }
+});
+
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height =
+    Math.min(input.scrollHeight, 100) + "px";
+});
+
+document.querySelectorAll("[data-prompt]").forEach((button) => {
+  button.addEventListener("click", () => {
+    input.value = button.dataset.prompt || "";
+    submit();
+  });
+});
+
+let recognition = null;
+
+if (
+  "SpeechRecognition" in window ||
+  "webkitSpeechRecognition" in window
+) {
+  const SR =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  recognition = new SR();
+
+  recognition.lang = "it-IT";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    mic.style.boxShadow =
+      "0 0 25px rgba(111,231,255,.7)";
+
+    orb.classList.add("listening");
+  };
+
+  recognition.onend = () => {
+    mic.style.boxShadow = "";
+    orb.classList.remove("listening");
+  };
+
+  recognition.onerror = () => {
+    mic.style.boxShadow = "";
+    orb.classList.remove("listening");
+  };
+
+  recognition.onresult = (e) => {
+    input.value =
+      e.results[0][0].transcript;
+
+    submit();
+  };
+}
+
+mic.addEventListener("click", () => {
+  if (!recognition) {
+    addMessage(
+      "La dettatura vocale non è disponibile in questo browser. Prova ad aprire JARVIS in Safari."
+    );
+    return;
+  }
+
+  try {
+    recognition.start();
+  } catch (_) {}
 });
