@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050b12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>JARVIS</title>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">J.A.R.V.I.S.</div>
+      <div class="status"><span></span> ONLINE</div>
+    </header>
+
+    <section class="hero">
+      <div class="orb"><div class="orb-core"></div></div>
+      <h1>Good evening.</h1>
+      <p id="statusText">Come posso assisterti?</p>
+    </section>
+
+    <section id="messages" class="messages" aria-live="polite"></section>
+
+    <section class="composer">
+      <textarea id="input" rows="1" placeholder="Parla con JARVIS..." aria-label="Messaggio"></textarea>
+      <button id="voiceBtn" class="round" aria-label="Parla">🎙️</button>
+      <button id="sendBtn" class="send" aria-label="Invia">➤</button>
+    </section>
+
+    <nav class="quick">
+      <button data-prompt="Che cosa puoi fare?">Cosa puoi fare?</button>
+      <button data-prompt="Ricordami questa informazione: ">Memoria</button>
+      <button data-prompt="Dammi una risposta breve e chiara.">Assistimi</button>
+    </nav>
+
+    <footer>JARVIS 1.0 · Prototype</footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
