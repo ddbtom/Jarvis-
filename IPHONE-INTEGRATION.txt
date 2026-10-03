@@ -1,0 +1,19 @@
+JARVIS — INTEGRAZIONE IPHONE/IPAD
+
+FASE 1 — ACCESSO RAPIDO
+- Apri Comandi Rapidi.
+- Crea un comando chiamato "JARVIS".
+- Aggiungilo alla schermata Home oppure al tasto Azione, se desiderato.
+
+FASE 2 — VOCE
+- Siri può eseguire un Comando Rapido pronunciandone il nome.
+- Frase: "Ehi Siri, JARVIS".
+
+FASE 3 — VERO CERVELLO AI
+Il frontend non deve contenere una chiave API.
+Il Comando Rapido passerà la richiesta a un endpoint HTTPS sicuro.
+L'endpoint chiamerà il modello AI e restituirà il testo.
+JARVIS potrà poi farlo leggere a Siri oppure mostrarlo nell'interfaccia.
+
+FASE 4 — VERSIONE NATIVA
+Per una vera integrazione di sistema useremo una piccola app iOS con App Intents. Questo permette di esporre azioni di JARVIS a Siri, Spotlight e Comandi Rapidi.

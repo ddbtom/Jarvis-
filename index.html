@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05070c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <title>JARVIS 2.0</title>
+</head>
+<body>
+  <div class="aurora aurora-a"></div>
+  <div class="aurora aurora-b"></div>
+
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><span></span></div>
+        <div>
+          <div class="brand-name">J.A.R.V.I.S.</div>
+          <div class="brand-sub">PERSONAL INTELLIGENCE SYSTEM</div>
+        </div>
+      </div>
+      <div class="status"><i></i><span>ONLINE</span></div>
+    </header>
+
+    <section class="hero">
+      <div class="orb-wrap" id="orb">
+        <div class="orb-core"></div>
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="scan"></div>
+      </div>
+      <div class="greeting">Good evening.</div>
+      <p class="subtitle">Come posso assisterti?</p>
+      <div class="chips">
+        <button data-prompt="Cosa puoi fare?">Cosa puoi fare?</button>
+        <button data-prompt="Cosa ricordi di me?">Memoria</button>
+        <button data-prompt="Aiutami con qualcosa">Assistimi</button>
+      </div>
+    </section>
+
+    <section class="conversation" id="conversation">
+      <article class="message jarvis">
+        <div class="avatar">J</div>
+        <div>
+          <div class="label">JARVIS</div>
+          <div class="bubble">Buonasera. Sono JARVIS 2.0. Il sistema è pronto.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="composer">
+      <div class="input-shell">
+        <textarea id="input" rows="1" placeholder="Parla con JARVIS…" autocomplete="off"></textarea>
+        <button class="mic" id="mic" aria-label="Parla"><span>⌕</span></button>
+        <button class="send" id="send" aria-label="Invia">↑</button>
+      </div>
+      <div class="hint">Tieni premuto il microfono per parlare • JARVIS è pronto ad ascoltare</div>
+    </section>
+
+    <footer>
+      <span>JARVIS 2.0</span><span>•</span><span>iPhone / iPad</span><span>•</span><span>Secure interface</span>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
