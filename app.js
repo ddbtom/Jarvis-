@@ -1,201 +1,158 @@
-const API_URL = "https://jarvis-ai.ddbtom.workers.dev/api/chat";
-
+/*
+ JARVIS NEXUS — browser client
+ IMPORTANT: never put an OpenAI API key in this file.
+ Set API_URL to your HTTPS backend.
+*/
+const API_URL = "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/api/chat";
 const input = document.getElementById("input");
 const send = document.getElementById("send");
 const mic = document.getElementById("mic");
 const conversation = document.getElementById("conversation");
-const orb = document.getElementById("orb");
+const reactor = document.getElementById("reactor");
+const stateLabel = document.getElementById("stateLabel");
+const statusText = document.getElementById("statusText");
 
 const history = [];
+let recognition = null;
+let selectedVoice = null;
 
-function addMessage(text, who = "jarvis", speakIt = true) {
+function setState(state){
+  reactor.classList.remove("thinking","listening","speaking");
+  if(state !== "STANDBY") reactor.classList.add(state.toLowerCase());
+  stateLabel.textContent = state;
+}
+
+function addMessage(text, who="jarvis", speakIt=false){
   const article = document.createElement("article");
   article.className = `message ${who}`;
-
   article.innerHTML = who === "jarvis"
     ? `<div class="avatar">J</div><div><div class="label">JARVIS</div><div class="bubble"></div></div>`
     : `<div><div class="bubble"></div></div>`;
-
   article.querySelector(".bubble").textContent = text;
   conversation.appendChild(article);
   conversation.scrollTop = conversation.scrollHeight;
-
-  if (who === "jarvis" && speakIt) speak(text);
+  if(who === "jarvis" && speakIt) speak(text);
+  return article.querySelector(".bubble");
 }
 
-function speak(text) {
-  if (!("speechSynthesis" in window)) return;
+function pickVoice(){
+  if(!("speechSynthesis" in window)) return null;
+  const voices = speechSynthesis.getVoices();
+  const it = voices.filter(v => /^it(-|_)/i.test(v.lang));
+  const preferred = [...it,...voices].find(v =>
+    /male|masch|luca|diego|giorgio|federico|marco|alfonso|paolo|andrea/i.test(v.name)
+  );
+  return preferred || it[0] || voices[0] || null;
+}
+if("speechSynthesis" in window){
+  selectedVoice = pickVoice();
+  speechSynthesis.onvoiceschanged = () => selectedVoice = pickVoice();
+}
 
+function speak(text){
+  if(!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
-
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "it-IT";
-  u.rate = 0.96;
-  u.pitch = 0.92;
-
+  u.rate = .94;
+  u.pitch = .72; // lower pitch; actual voice gender depends on installed system voice
+  if(selectedVoice) u.voice = selectedVoice;
+  u.onstart = () => setState("SPEAKING");
+  u.onend = () => setState("STANDBY");
+  u.onerror = () => setState("STANDBY");
   speechSynthesis.speak(u);
 }
 
-function setBusy(busy) {
+function setBusy(busy){
   send.disabled = busy;
-  mic.disabled = busy;
   input.disabled = busy;
-
-  if (busy) {
-    orb.classList.add("thinking");
-  } else {
-    orb.classList.remove("thinking");
-  }
+  if(busy) setState("THINKING"); else setState("STANDBY");
 }
 
-async function askJarvis(text) {
-  history.push({
-    role: "user",
-    content: text
+async function askJarvis(text){
+  history.push({role:"user",content:text});
+  const response = await fetch(API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({messages:history.slice(-16)})
   });
-
-  const messages = history.slice(-12);
-
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      messages: messages
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
+  if(!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = await response.json();
-
-  if (!data.answer || typeof data.answer !== "string") {
-    throw new Error("Invalid AI response");
-  }
-
-  history.push({
-    role: "assistant",
-    content: data.answer
-  });
-
+  if(!data.answer) throw new Error("Invalid AI response");
+  history.push({role:"assistant",content:data.answer});
   return data.answer;
 }
 
-async function submit() {
+async function submit(){
   const text = input.value.trim();
-
-  if (!text || send.disabled) return;
-
-  addMessage(text, "user", false);
-
+  if(!text || send.disabled) return;
+  addMessage(text,"user",false);
   input.value = "";
   input.style.height = "auto";
-
   setBusy(true);
-
-  addMessage("Un momento…", "jarvis", false);
-
-  const thinkingBubble =
-    conversation.lastElementChild.querySelector(".bubble");
-
-  try {
+  const bubble = addMessage("Elaborazione in corso…","jarvis",false);
+  try{
     const answer = await askJarvis(text);
-
-    thinkingBubble.textContent = answer;
+    bubble.textContent = answer;
     speak(answer);
-
-  } catch (error) {
-    console.error("JARVIS connection error:", error);
-
-    const fallback =
-      "Mi dispiace, al momento non riesco a raggiungere il mio motore AI. Riprova tra poco.";
-
-    thinkingBubble.textContent = fallback;
-    speak(fallback);
-
-    history.pop();
-
-  } finally {
+  }catch(err){
+    console.error(err);
+    bubble.textContent = "Non riesco a raggiungere il mio motore AI. Controlla il backend e riprova.";
+    speak(bubble.textContent);
+  }finally{
     setBusy(false);
     input.focus();
   }
 }
 
-send.addEventListener("click", submit);
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    submit();
-  }
+send.addEventListener("click",submit);
+input.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){e.preventDefault();submit();}
+});
+input.addEventListener("input",()=>{
+  input.style.height="auto";
+  input.style.height=Math.min(input.scrollHeight,120)+"px";
+});
+document.querySelectorAll("[data-prompt]").forEach(b=>{
+  b.addEventListener("click",()=>{input.value=b.dataset.prompt;submit();});
 });
 
-input.addEventListener("input", () => {
-  input.style.height = "auto";
-  input.style.height =
-    Math.min(input.scrollHeight, 100) + "px";
-});
-
-document.querySelectorAll("[data-prompt]").forEach((button) => {
-  button.addEventListener("click", () => {
-    input.value = button.dataset.prompt || "";
-    submit();
-  });
-});
-
-let recognition = null;
-
-if (
-  "SpeechRecognition" in window ||
-  "webkitSpeechRecognition" in window
-) {
-  const SR =
-    window.SpeechRecognition ||
-    window.webkitSpeechRecognition;
-
+/* Browser voice input. This is NOT an always-on Hey Jarvis listener.
+   iOS/browser security requires a user gesture. */
+if("SpeechRecognition" in window || "webkitSpeechRecognition" in window){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
-
   recognition.lang = "it-IT";
   recognition.interimResults = false;
   recognition.continuous = false;
-
-  recognition.onstart = () => {
-    mic.style.boxShadow =
-      "0 0 25px rgba(111,231,255,.7)";
-
-    orb.classList.add("listening");
+  recognition.onstart = ()=>{
+    mic.classList.add("active");
+    setState("LISTENING");
+    statusText.textContent = "LISTENING";
   };
-
-  recognition.onend = () => {
-    mic.style.boxShadow = "";
-    orb.classList.remove("listening");
+  recognition.onend = ()=>{
+    mic.classList.remove("active");
+    statusText.textContent = "ONLINE";
+    if(!send.disabled) setState("STANDBY");
   };
-
-  recognition.onerror = () => {
-    mic.style.boxShadow = "";
-    orb.classList.remove("listening");
+  recognition.onerror = ()=>{
+    mic.classList.remove("active");
+    statusText.textContent = "ONLINE";
+    setState("STANDBY");
   };
-
-  recognition.onresult = (e) => {
-    input.value =
-      e.results[0][0].transcript;
-
+  recognition.onresult = e=>{
+    input.value = e.results[0][0].transcript;
     submit();
   };
 }
-
-mic.addEventListener("click", () => {
-  if (!recognition) {
-    addMessage(
-      "La dettatura vocale non è disponibile in questo browser. Prova ad aprire JARVIS in Safari."
-    );
+mic.addEventListener("click",()=>{
+  if(!recognition){
+    addMessage("Il riconoscimento vocale del browser non è disponibile. Usa Safari oppure la futura app nativa JARVIS.");
     return;
   }
-
-  try {
-    recognition.start();
-  } catch (_) {}
+  try{ recognition.start(); }catch(_){}
 });
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));
+}
